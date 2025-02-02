@@ -1,0 +1,81 @@
+import socket
+from Crypto.Cipher import DES
+import base64
+import threading
+import time
+
+H = "127.0.0.1"
+P = 65431
+K = b"12345678"
+
+def p(t):
+    l = 8 - (len(t) % 8)
+    return t + chr(l) * l
+
+def u(t):
+    return t[:-ord(t[-1])]
+
+def e(t):
+    c = DES.new(K, DES.MODE_ECB)
+    p_t = p(t)
+    et = c.encrypt(p_t.encode())
+    return base64.b64encode(et).decode()
+
+def d(et):
+    try:
+        c = DES.new(K, DES.MODE_ECB)
+        dt = c.decrypt(base64.b64decode(et))
+        return u(dt.decode())
+    except Exception as e:
+        return f"Err: {e}"
+
+def s():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ss:
+        ss.bind((H, P))
+        ss.listen()
+        ss.settimeout(20)
+        print(f"Listening on {H}:{P}")
+
+        try:
+            c, a = ss.accept()
+            print(f"Connected by {a}")
+        except socket.timeout:
+            print("Timeout")
+            return
+
+        with c:
+            while True:
+                try:
+                    m = c.recv(1024).decode()
+                    if not m:
+                        print("Disconnected")
+                        break
+                    print(f"Encrypted: {m}")
+                    dm = d(m)
+                    print(f"Decrypted: {dm}")
+                    r = f"Received: {dm}"
+                    er = e(r)
+                    c.sendall(er.encode())
+                except Exception as e:
+                    print(f"Err: {e}")
+                    break
+
+def st():
+    t = threading.Thread(target=s)
+    t.daemon = True
+    t.start()
+
+def c():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cs:
+        cs.connect((H, P))
+        msg = "Hello"
+        em = e(msg)
+        print(f"Sent: {em}")
+        cs.sendall(em.encode())
+        r = cs.recv(1024).decode()
+        dr = d(r)
+        print(f"Resp: {dr}")
+
+st()
+time.sleep(1)
+c()
