@@ -1,0 +1,40 @@
+from google.colab import files
+from Crypto.Cipher import DES
+import binascii
+
+uploaded = files.upload()
+
+file = list(uploaded.keys())[0]
+
+k = b'8bytekey'
+
+def p(t):
+    while len(t) % 8 != 0:
+        t += ' '
+    return t
+
+def e(t, k):
+    c = DES.new(k, DES.MODE_ECB)
+    return binascii.hexlify(c.encrypt(p(t).encode())).decode()
+
+def d(t, k):
+    c = DES.new(k, DES.MODE_ECB)
+    return c.decrypt(binascii.unhexlify(t)).decode().strip()
+
+def ef(f, k):
+    with open(f, 'r') as i:
+        d = i.read()
+    e_d = e(d, k)
+    with open(f + ".enc", 'w') as o:
+        o.write(e_d)
+    print("File Encrypted:", f + ".enc")
+
+def df(f, k):
+    with open(f, 'r') as i:
+        d = i.read()
+    d_d = d(d, k)
+    with open(f.replace(".enc", ".dec"), 'w') as o:
+        o.write(d_d)
+    print("File Decrypted:", f.replace(".enc", ".dec"))
+ef(file, k)
+df(file + ".enc", k)
