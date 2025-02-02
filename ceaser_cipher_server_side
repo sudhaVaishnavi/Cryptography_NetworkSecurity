@@ -1,0 +1,30 @@
+import socket
+
+def c_decrypt(c, s):
+    r = ""
+    for p in c:
+        if p.isalpha():
+            b = 65 if p.isupper() else 97
+            r += chr((ord(p) - b - s) % 26 + b)
+        else:
+            r += p
+    return r
+
+def c_server():
+    h = '10.1.39.148'
+    p = 65432
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ss:
+        ss.bind((h, p))
+        ss.listen()
+        conn, addr = ss.accept()
+        with conn:
+            while True:
+                data = conn.recv(1024).decode()
+                if not data:
+                    break
+                s, c = data.split("|")
+                s = int(s)
+                d = c_decrypt(c, s)
+                conn.sendall(d.encode())
+
+c_server()
