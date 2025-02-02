@@ -1,0 +1,56 @@
+import socket
+
+def p_encrypt(t, k):
+    t = t.lower().replace("j", "i").replace(" ", "")
+    r = ""
+    for i in range(0, len(t), 2):
+        x, y = t[i], t[i + 1]
+        r1, c1 = f(k, x)
+        r2, c2 = f(k, y)
+        if r1 == r2:
+            r += k[r1][(c1 + 1) % 5]
+            r += k[r2][(c2 + 1) % 5]
+        elif c1 == c2:
+            r += k[(r1 + 1) % 5][c1]
+            r += k[(r2 + 1) % 5][c2]
+        else:
+            r += k[r1][c2]
+            r += k[r2][c1]
+    return r
+
+def f(k, c):
+    for i, r in enumerate(k):
+        if c in r:
+            return i, r.index(c)
+
+def k_matrix(k):
+    k = k.replace("j", "i").lower()
+    m = []
+    u = set()
+    for c in k:
+        if c not in u and c.isalpha():
+            u.add(c)
+            m.append(c)
+    a = "abcdefghiklmnopqrstuvwxyz"
+    for c in a:
+        if c not in u:
+            u.add(c)
+            m.append(c)
+    return [m[i:i + 5] for i in range(0, 25, 5)]
+
+def p_client():
+    h = '10.1.39.148'
+    p = 65432
+    k = input()
+    t = input()
+    km = k_matrix(k)
+    c = p_encrypt(t, km)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cs:
+        cs.connect((h, p))
+        msg = f"{k}|{c}"
+        cs.sendall(msg.encode())
+        print(f"Encrypted: {c}")
+        r = cs.recv(1024).decode()
+        print(f"Decrypted: {r}")
+
+p_client()
