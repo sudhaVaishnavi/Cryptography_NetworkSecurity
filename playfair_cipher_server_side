@@ -1,0 +1,57 @@
+import socket
+
+def p_decrypt(c, k):
+    r = ""
+    for i in range(0, len(c), 2):
+        x, y = c[i], c[i + 1]
+        r1, c1 = f(k, x)
+        r2, c2 = f(k, y)
+        if r1 == r2:
+            r += k[r1][(c1 - 1) % 5]
+            r += k[r2][(c2 - 1) % 5]
+        elif c1 == c2:
+            r += k[(r1 - 1) % 5][c1]
+            r += k[(r2 - 1) % 5][c2]
+        else:
+            r += k[r1][c2]
+            r += k[r2][c1]
+    return r.replace("x", "")
+
+def f(k, c):
+    for i, r in enumerate(k):
+        if c in r:
+            return i, r.index(c)
+
+def k_matrix(k):
+    k = k.replace("j", "i").lower()
+    m = []
+    u = set()
+    for c in k:
+        if c not in u and c.isalpha():
+            u.add(c)
+            m.append(c)
+    a = "abcdefghiklmnopqrstuvwxyz"
+    for c in a:
+        if c not in u:
+            u.add(c)
+            m.append(c)
+    return [m[i:i + 5] for i in range(0, 25, 5)]
+
+def p_server():
+    h = '10.1.39.148'
+    p = 65432
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ss:
+        ss.bind((h, p))
+        ss.listen()
+        conn, addr = ss.accept()
+        with conn:
+            while True:
+                data = conn.recv(1024).decode()
+                if not data:
+                    break
+                k, c = data.split("|")
+                km = k_matrix(k)
+                d = p_decrypt(c, km)
+                conn.sendall(d.encode())
+
+p_server()
