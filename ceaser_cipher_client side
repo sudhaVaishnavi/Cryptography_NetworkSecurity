@@ -1,0 +1,27 @@
+import socket
+
+def c_encrypt(p, s):
+    r = ""
+    for c in p:
+        if c.isalpha():
+            b = 65 if c.isupper() else 97
+            r += chr((ord(c) - b + s) % 26 + b)
+        else:
+            r += c
+    return r
+
+def c_client():
+    h = '10.1.39.148'
+    p = 65432
+    s = int(input())
+    t = input()
+    c = c_encrypt(t, s)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as cs:
+        cs.connect((h, p))
+        msg = f"{s}|{c}"
+        cs.sendall(msg.encode())
+        print(f"Encrypted: {c}")
+        r = cs.recv(1024).decode()
+        print(f"Decrypted: {r}")
+
+c_client()
