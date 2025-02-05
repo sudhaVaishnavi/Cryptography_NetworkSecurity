@@ -1,0 +1,58 @@
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.padding import PKCS7
+from cryptography.hazmat.backends import default_backend
+import os
+import base64
+
+def generate_key(password: str, salt: bytes) -> bytes:
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100000,
+        backend=default_backend()
+    )
+    return kdf.derive(password.encode())
+
+def encrypt_file(plaintext: bytes, password: str) -> bytes:
+    salt = os.urandom(16)
+    iv = os.urandom(16)
+    key = generate_key(password, salt)
+    padder = PKCS7(128).padder()
+    padded_plaintext = padder.update(plaintext) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_plaintext) + encryptor.finalize()
+    return salt + iv + ciphertext
+
+def decrypt_file(data: bytes, password: str) -> bytes:
+
+    salt = data[:16]
+    iv = data[16:32]
+    ciphertext = data[32:]
+
+    key = generate_key(password, salt)
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+
+    unpadder = PKCS7(128).unpadder()
+    plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
+
+    return plaintext
+
+if __name__ == "__main__":
+    key = input("Key for encryption and decryption: ")
+    plaintext = input("plaintext: ").encode()
+
+    encrypted_data = encrypt_file(plaintext,key)
+    print(f"Encrypted data with base64: {base64.b64encode(encrypted_data).decode()}")
+
+    encrypted_input = base64.b64decode(input("base64-encoded data: "))
+
+    decrypted_data = decrypt_file(encrypted_input, key)
+    print(f"Decrypted plaintext: {decrypted_data.decode()}")
